@@ -23,14 +23,14 @@ export function AboutSection() {
             transition={{ duration: 0.55 }}
             className="relative"
           >
-            <div className="aspect-[4/5] rounded-3xl bg-gradient-to-br from-primary/10 via-sage/10 to-cream flex items-center justify-center p-24">
+            <div className="aspect-[4/5] rounded-3xl bg-gradient-to-br from-primary/10 via-sage/10 to-cream flex items-center justify-center p-6 sm:p-14 lg:p-20">
               <div className="w-full h-full rounded-2xl overflow-hidden">
                 <Image
                   src="/founder.png"
                   alt="Harsheen Kaur — Founder, Prijas Skincare"
                   width={500}
                   height={625}
-                  className="w-full h-full object-cover object-top"
+                  className="w-full h-full object-cover object-center"
                   priority
                 />
               </div>
