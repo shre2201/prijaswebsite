@@ -1,142 +1,140 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
-import { CalendarCheck, Package, Users, TrendingUp, Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { formatPrice, formatDate } from "@/lib/utils";
+import { ArrowRight, Video, Phone, MapPin } from "lucide-react";
+import { dayKey, fromDayKey, hhmmToMinutes, minutesToLabel, slotToMinutes } from "@/lib/calendar";
+import { cn } from "@/lib/utils";
 
-async function getStats() {
-  const [
-    totalBookings,
-    pendingBookings,
-    totalOrders,
-    revenueResult,
-    totalCustomers,
-    recentBookings,
-    recentOrders,
-  ] = await Promise.all([
-    db.booking.count(),
-    db.booking.count({ where: { status: "PENDING" } }),
-    db.order.count({ where: { status: "CONFIRMED" } }),
-    db.order.aggregate({ _sum: { total: true }, where: { status: { in: ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"] } } }),
-    db.user.count({ where: { role: "CUSTOMER" } }),
-    db.booking.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: { user: { select: { name: true } } },
-    }),
-    db.order.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: { user: { select: { name: true } } },
-    }),
-  ]);
+export const dynamic = "force-dynamic";
 
-  return { totalBookings, pendingBookings, totalOrders, revenue: Number(revenueResult._sum.total ?? 0), totalCustomers, recentBookings, recentOrders };
+const MODE_ICON = { VIDEO: Video, PHONE: Phone, IN_PERSON: MapPin } as const;
+
+function todayKeyIST() {
+  // The studio works in Indian time; compute "today" there, not in the server's timezone.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 }
 
-const STATUS_COLORS: Record<string, "default" | "warning" | "success" | "destructive" | "secondary"> = {
-  PENDING: "warning",
-  CONFIRMED: "success",
-  COMPLETED: "secondary",
-  CANCELLED: "destructive",
-};
+function fmtDay(d: Date) {
+  return new Date(`${dayKey(d)}T00:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+}
+
+async function getData() {
+  const today = fromDayKey(todayKeyIST());
+  const [upcoming, pending, pendingReviews, productsShown, events] = await Promise.all([
+    db.booking.findMany({
+      where: { date: { gte: today }, status: { in: ["PENDING", "CONFIRMED"] } },
+      orderBy: { date: "asc" },
+      take: 30,
+      include: { user: { select: { name: true, phone: true } } },
+    }),
+    db.booking.count({ where: { status: "PENDING", date: { gte: today } } }),
+    db.testimonial.count({ where: { status: "PENDING" } }),
+    db.product.count({ where: { isActive: true } }),
+    db.calendarEvent.findMany({ where: { date: { gte: today } }, orderBy: [{ date: "asc" }, { startTime: "asc" }], take: 5 }),
+  ]);
+  // same-day ordering by time slot
+  upcoming.sort((a, b) => a.date.getTime() - b.date.getTime() || (slotToMinutes(a.timeSlot) ?? 0) - (slotToMinutes(b.timeSlot) ?? 0));
+  const todayCount = upcoming.filter((b) => dayKey(b.date) === dayKey(today)).length;
+  return { upcoming: upcoming.slice(0, 8), upcomingTotal: upcoming.length, todayCount, pending, pendingReviews, productsShown, events };
+}
 
 export default async function AdminDashboard() {
-  const stats = await getStats();
+  const d = await getData();
 
-  const STAT_CARDS = [
-    { title: "Total Bookings", value: stats.totalBookings, icon: CalendarCheck, sub: `${stats.pendingBookings} pending` },
-    { title: "Confirmed Orders", value: stats.totalOrders, icon: Package, sub: "This month" },
-    { title: "Total Revenue", value: formatPrice(stats.revenue), icon: TrendingUp, sub: "All time" },
-    { title: "Customers", value: stats.totalCustomers, icon: Users, sub: "Registered" },
+  const STATS = [
+    { label: "Consultations today", value: d.todayCount, href: "/admin/calendar" },
+    { label: "Upcoming consultations", value: d.upcomingTotal, href: "/admin/bookings" },
+    { label: "Requests to confirm", value: d.pending, href: "/admin/bookings", accent: d.pending > 0 },
+    { label: "Reviews to approve", value: d.pendingReviews, href: "/admin/testimonials", accent: d.pendingReviews > 0 },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground text-sm mt-1">Welcome back — here&apos;s what&apos;s happening today.</p>
+        <p className="font-mono text-[0.7rem] uppercase tracking-[0.16em] text-clay">
+          {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Kolkata" })}
+        </p>
+        <h1 className="font-display text-[2.2rem] font-light text-ink mt-2">Good to see you, Harsheen.</h1>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        {STAT_CARDS.map((card) => (
-          <Card key={card.title}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm text-muted-foreground">{card.title}</p>
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <card.icon className="h-4 w-4 text-primary" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{card.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-2 xl:grid-cols-4 border-t border-l border-border">
+        {STATS.map((s) => (
+          <Link key={s.label} href={s.href} className="border-r border-b border-border bg-card px-5 py-5 hover:bg-paper transition-colors">
+            <p className={cn("font-display text-[2.4rem] leading-none", s.accent ? "text-clay" : "text-ink")}>{s.value}</p>
+            <p className="mt-2 text-[0.85rem] text-stone">{s.label}</p>
+          </Link>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Bookings */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Recent Bookings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {stats.recentBookings.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No bookings yet</p>
-              )}
-              {stats.recentBookings.map((b) => (
-                <div key={b.id} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary flex-shrink-0">
-                      {b.user.name.charAt(0)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{b.user.name}</p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {formatDate(b.date)} · {b.timeSlot}
-                      </p>
-                    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-8">
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-display text-[1.4rem] text-ink">Coming up</h2>
+            <Link href="/admin/calendar" className="text-sm text-ink underline underline-offset-4 decoration-ink/30 hover:decoration-ink">Open calendar</Link>
+          </div>
+          <ul className="border-t border-border">
+            {d.upcoming.length === 0 && <li className="py-8 text-sm text-stone">No consultations booked yet.</li>}
+            {d.upcoming.map((b) => {
+              const Icon = MODE_ICON[b.mode];
+              const phone = b.phone ?? b.user?.phone;
+              return (
+                <li key={b.id} className="py-3.5 border-b border-border grid grid-cols-[7.5rem_1fr_auto] gap-4 items-center">
+                  <div>
+                    <p className="text-[0.85rem] text-ink">{fmtDay(b.date)}</p>
+                    <p className="font-mono text-[0.72rem] text-stone">{b.timeSlot}</p>
                   </div>
-                  <Badge variant={STATUS_COLORS[b.status] ?? "secondary"}>{b.status}</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                  <div className="min-w-0">
+                    <p className="text-[0.95rem] text-ink truncate">{b.name ?? b.user?.name ?? "Guest"}</p>
+                    <p className="text-[0.78rem] text-stone flex items-center gap-1.5 truncate">
+                      <Icon className="h-3.5 w-3.5 shrink-0" /> {b.concerns.slice(0, 2).join(", ") || "Consultation"}
+                      {phone ? ` · ${phone}` : ""}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    "text-[0.68rem] px-2 py-0.5 rounded-full",
+                    b.status === "PENDING" ? "bg-amber-100 text-amber-800" : "bg-moss/10 text-moss"
+                  )}>
+                    {b.status === "PENDING" ? "to confirm" : "confirmed"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {d.upcomingTotal > d.upcoming.length && (
+            <Link href="/admin/bookings" className="mt-3 inline-flex items-center gap-1 text-sm text-ink">
+              All {d.upcomingTotal} upcoming <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
+        </section>
 
-        {/* Recent Orders */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Recent Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {stats.recentOrders.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No orders yet</p>
+        <aside className="space-y-8">
+          <section>
+            <h2 className="font-display text-[1.2rem] text-ink mb-3">Your next events</h2>
+            <ul className="border-t border-border">
+              {d.events.length === 0 && (
+                <li className="py-4 text-sm text-stone">
+                  Nothing yet. <Link href="/admin/calendar" className="underline underline-offset-4">Add one in the calendar</Link>.
+                </li>
               )}
-              {stats.recentOrders.map((o) => (
-                <div key={o.id} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-8 w-8 rounded-full bg-sage/20 flex items-center justify-center text-xs font-semibold text-primary flex-shrink-0">
-                      {o.user.name.charAt(0)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{o.user.name}</p>
-                      <p className="text-xs text-muted-foreground">#{o.id.slice(-8).toUpperCase()}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">{formatPrice(Number(o.total))}</p>
-                    <Badge variant={STATUS_COLORS[o.status] ?? "secondary"} className="text-xs">{o.status}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              {d.events.map((e) => {
+                const s = e.startTime ? hhmmToMinutes(e.startTime) : null;
+                return (
+                  <li key={e.id} className="py-3 border-b border-border border-l-2 border-l-clay pl-3">
+                    <p className="font-mono text-[0.7rem] text-stone">
+                      {fmtDay(e.date)} · {e.allDay ? "All day" : s !== null ? minutesToLabel(s) : ""}
+                    </p>
+                    <p className="text-[0.92rem] text-ink">{e.title}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <section className="bg-card border border-border p-5">
+            <p className="font-display text-[2rem] leading-none text-ink">{d.productsShown}</p>
+            <p className="text-[0.85rem] text-stone mt-1.5">products shown on the website</p>
+            <Link href="/admin/products" className="mt-3 inline-block text-sm text-ink underline underline-offset-4 decoration-ink/30">Manage products</Link>
+          </section>
+        </aside>
       </div>
     </div>
   );

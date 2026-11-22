@@ -1,211 +1,72 @@
-"use client";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Package } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useCart } from "@/lib/cart-context";
-import { formatPrice } from "@/lib/utils";
+import { ArrowRight } from "lucide-react";
 
 export interface PublicProduct {
   id: string;
   name: string;
-  price: number;
-  comparePrice: number | null;
-  category: "UNIVERSAL" | "PERSONALIZED";
-  isFeatured: boolean;
-  stock: number;
+  description: string;
   images: string[];
 }
 
-type Filter = "All" | "Universal" | "Personalized";
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  UNIVERSAL: "🌿",
-  PERSONALIZED: "✨",
-};
-
-const TAG_STYLE: Record<string, string> = {
-  Featured: "bg-amber-100 text-amber-700",
-};
-
+// Display only: nothing is sold off the shelf. Every product is mixed after a consultation.
 export function ProductsSection({ products }: { products: PublicProduct[] }) {
-  const [filter, setFilter] = useState<Filter>("All");
-  const [added, setAdded] = useState<string | null>(null);
-  const router = useRouter();
-  const { data: session } = useSession();
-  const { addItem } = useCart();
-
-  const filtered = products.filter((p) => {
-    if (filter === "Universal") return p.category === "UNIVERSAL";
-    if (filter === "Personalized") return p.category === "PERSONALIZED";
-    return true;
-  });
-
-  function handleAddToCart(product: PublicProduct) {
-    if (!session) {
-      router.push(`/login?from=cart&product=${product.id}`);
-      return;
-    }
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      comparePrice: product.comparePrice,
-      emoji: CATEGORY_EMOJI[product.category] ?? "🌿",
-    });
-    setAdded(product.id);
-    setTimeout(() => setAdded(null), 1500);
-  }
-
   return (
-    <section id="products" className="bg-cream/25">
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-14 sm:py-20">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8"
-        >
-          <div>
-            <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-2">Shop</p>
-            <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground">Our Products</h2>
+    <section id="products" className="bg-paper border-t border-ink/10">
+      <div className="shell py-20 sm:py-24 lg:py-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-x-10 gap-y-6 mb-14 items-end">
+          <div className="lg:col-span-6">
+            <p className="eyebrow mb-5">What Harsheen makes</p>
+            <h2 className="display-lg text-ink text-balance">Mixed by hand, once we know your skin.</h2>
           </div>
-          <p className="text-sm text-muted-foreground max-w-xs sm:text-right leading-relaxed">
-            Universal products ship immediately. Personalized blends are crafted after your consultation.
+          <p className="lg:col-span-5 lg:col-start-8 text-[1rem] leading-[1.7] text-stone">
+            These are the things Harsheen mixes most often. None of them leaves the studio until
+            you’ve had your consultation, because each jar is adjusted to the skin it’s going to.
           </p>
-        </motion.div>
+        </div>
 
-        {/* Filter tabs */}
-        {products.length > 0 && (
-          <div className="flex gap-2 mb-7">
-            {(["All", "Universal", "Personalized"] as Filter[]).map((tab) => {
-              const count = tab === "All"
-                ? products.length
-                : products.filter((p) => p.category === tab.toUpperCase()).length;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setFilter(tab)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                    filter === tab
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border/60 text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                  }`}
-                >
-                  {tab}
-                  <span className="ml-1.5 opacity-60">({count})</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {products.length === 0 && (
-          <div className="text-center py-20 text-muted-foreground">
-            <Package className="h-10 w-10 mx-auto mb-3 opacity-20" />
-            <p className="text-sm">No products yet.</p>
-            <p className="text-xs mt-1">
-              Add products from the{" "}
-              <Link href="/admin/products" className="text-primary underline">admin panel</Link>.
-            </p>
-          </div>
-        )}
-
-        {/* Product grid */}
-        {products.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            <AnimatePresence mode="popLayout">
-              {filtered.map((product, i) => {
-                const emoji = CATEGORY_EMOJI[product.category] ?? "🌿";
-                const discount = product.comparePrice
-                  ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
-                  : null;
-
-                return (
-                  <motion.div
-                    key={product.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: i * 0.04, duration: 0.2 }}
-                    className="group bg-white rounded-xl border border-border/40 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-                  >
-                    {/* Image area */}
-                    <div className="relative h-36 sm:h-40 bg-gradient-to-br from-cream to-green-50 flex items-center justify-center overflow-hidden">
-                      {product.images[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={product.images[0]}
-                          alt={product.name}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <span className="text-4xl group-hover:scale-110 transition-transform duration-300">
-                          {emoji}
-                        </span>
-                      )}
-
-                      {product.isFeatured && (
-                        <span className={`absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${TAG_STYLE.Featured}`}>
-                          Featured
-                        </span>
-                      )}
-
-                      {discount && (
-                        <span className="absolute bottom-2 right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
-                          {discount}% off
-                        </span>
-                      )}
+        {products.length === 0 ? (
+          <p className="py-16 text-center text-stone max-w-md mx-auto">
+            Book a consultation and we’ll talk through what to make for you.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-12 sm:gap-x-6">
+            {products.map((product) => (
+              <li key={product.id} className="group">
+                <div className="relative aspect-square overflow-hidden rounded-[2px] bg-[#EFE6DA]">
+                  {product.images[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      loading="lazy"
+                      className="h-full w-full object-contain p-[6%] transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center font-display italic text-[1.1rem] text-stone px-4 text-center">
+                      {product.name}
                     </div>
-
-                    {/* Info */}
-                    <div className="p-3">
-                      <h3 className="text-[13px] font-medium text-foreground leading-snug line-clamp-2 mb-2.5">
-                        {product.name}
-                      </h3>
-
-                      <div className="flex items-center gap-1.5 mb-2.5">
-                        <span className="text-sm font-bold text-foreground">{formatPrice(product.price)}</span>
-                        {product.comparePrice && (
-                          <span className="text-[11px] text-muted-foreground line-through">
-                            {formatPrice(product.comparePrice)}
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => handleAddToCart(product)}
-                        disabled={product.stock === 0}
-                        className={`w-full flex items-center justify-center gap-1.5 text-[12px] font-medium py-1.5 rounded-lg transition-all duration-200 ${
-                          product.stock === 0
-                            ? "bg-muted text-muted-foreground cursor-not-allowed"
-                            : added === product.id
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary"
-                        }`}
-                      >
-                        <ShoppingBag className="h-3 w-3" />
-                        {product.stock === 0 ? "Out of stock" : added === product.id ? "Added!" : "Add to cart"}
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
+                  )}
+                </div>
+                <h3 className="mt-4 font-display text-[1.12rem] sm:text-[1.2rem] leading-snug text-ink">{product.name}</h3>
+                {product.description && (
+                  <p className="mt-1.5 text-[0.9rem] leading-[1.6] text-stone line-clamp-2">{product.description}</p>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
 
-        {/* No results for current filter */}
-        {products.length > 0 && filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            No {filter.toLowerCase()} products yet.
-          </div>
-        )}
+        <div className="mt-16 pt-8 border-t border-ink/15 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <p className="font-display italic text-[1.2rem] sm:text-[1.35rem] text-ink max-w-[34rem]">
+            Not sure which of these you need? That’s what the consultation is for.
+          </p>
+          <Link
+            href="/#consultation"
+            className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-full bg-moss text-paper text-[0.92rem] hover:bg-ink transition-colors self-start sm:self-auto shrink-0"
+          >
+            Book your consultation <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
+          </Link>
+        </div>
       </div>
     </section>
   );

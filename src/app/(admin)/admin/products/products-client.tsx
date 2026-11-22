@@ -3,20 +3,18 @@ import { useState } from "react";
 import { Plus, Search, ShoppingBag, Star, Eye, EyeOff, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProductFormModal } from "@/components/admin/product-form-modal";
-import { ProductPriceEditor } from "@/components/admin/product-price-editor";
 import { ProductToggle } from "@/components/admin/product-toggle";
 import { cn } from "@/lib/utils";
 import type { Product } from "@prisma/client";
 
 interface Props {
   products: Product[];
-  stats: { universalCount: number; personalizedCount: number; activeCount: number };
+  stats: { activeCount: number };
 }
 
-type Filter = "all" | "UNIVERSAL" | "PERSONALIZED" | "inactive";
+type Filter = "all" | "shown" | "hidden";
 
 export function ProductsClient({ products, stats }: Props) {
   const [showModal, setShowModal] = useState(false);
@@ -26,23 +24,17 @@ export function ProductsClient({ products, stats }: Props) {
 
   const filtered = products.filter((p) => {
     const matchesFilter =
-      filter === "all"
-        ? true
-        : filter === "inactive"
-        ? !p.isActive
-        : p.category === filter;
+      filter === "all" ? true : filter === "hidden" ? !p.isActive : p.isActive;
     const matchesSearch =
       search === "" ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.sku ?? "").toLowerCase().includes(search.toLowerCase());
+      p.name.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
   const FILTERS: { key: Filter; label: string; count: number }[] = [
     { key: "all", label: "All", count: products.length },
-    { key: "UNIVERSAL", label: "Universal", count: stats.universalCount },
-    { key: "PERSONALIZED", label: "Personalized", count: stats.personalizedCount },
-    { key: "inactive", label: "Inactive", count: products.length - stats.activeCount },
+    { key: "shown", label: "On website", count: stats.activeCount },
+    { key: "hidden", label: "Hidden", count: products.length - stats.activeCount },
   ];
 
   return (
@@ -58,37 +50,15 @@ export function ProductsClient({ products, stats }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Products</h1>
+            <h1 className="font-display text-[2rem] font-light text-ink">Products</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              {stats.activeCount} active · {products.length} total
+              {stats.activeCount} shown on the website · {products.length} total. Prices aren’t shown publicly.
             </p>
           </div>
           <Button onClick={() => setShowModal(true)}>
             <Plus className="h-4 w-4 mr-1" />
             Add Product
           </Button>
-        </div>
-
-        {/* Stats strip */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="pt-5">
-              <p className="text-xs text-muted-foreground">Universal</p>
-              <p className="text-2xl font-bold mt-1">{stats.universalCount}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-5">
-              <p className="text-xs text-muted-foreground">Personalized</p>
-              <p className="text-2xl font-bold mt-1">{stats.personalizedCount}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-5">
-              <p className="text-xs text-muted-foreground">Active</p>
-              <p className="text-2xl font-bold mt-1">{stats.activeCount}</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Filters + search */}
@@ -151,10 +121,10 @@ export function ProductsClient({ products, stats }: Props) {
                   )}
                 >
                   {/* Product image placeholder */}
-                  <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/10 to-sage/10 flex items-center justify-center flex-shrink-0 text-2xl">
+                  <div className="h-16 w-16 rounded-md bg-[#EFE6DA] flex items-center justify-center flex-shrink-0 text-2xl">
                     {product.images[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={product.images[0]} alt="" className="h-full w-full object-cover rounded-xl" />
+                      <img src={product.images[0]} alt="" className="h-full w-full object-contain p-1" />
                     ) : "🧴"}
                   </div>
 
@@ -165,26 +135,8 @@ export function ProductsClient({ products, stats }: Props) {
                       {product.isFeatured && (
                         <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 flex-shrink-0" />
                       )}
-                      <Badge
-                        variant={product.category === "UNIVERSAL" ? "secondary" : "default"}
-                        className="text-xs"
-                      >
-                        {product.category === "UNIVERSAL" ? "Universal" : "Personalized"}
-                      </Badge>
                     </div>
-                    {product.sku && (
-                      <p className="text-xs text-muted-foreground mt-0.5">SKU: {product.sku}</p>
-                    )}
-                  </div>
-
-                  {/* Price editor — hover to edit inline */}
-                  <div className="hidden sm:block">
-                    <ProductPriceEditor
-                      productId={product.id}
-                      price={Number(product.price)}
-                      comparePrice={product.comparePrice ? Number(product.comparePrice) : null}
-                      stock={product.stock}
-                    />
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{product.description}</p>
                   </div>
 
                   {/* Toggles */}

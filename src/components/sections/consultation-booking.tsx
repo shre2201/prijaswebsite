@@ -1,16 +1,15 @@
 "use client";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Video, Phone, MapPin, CheckCircle2, Loader2, LogIn } from "lucide-react";
+import { Video, Phone, MapPin, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn, generateTimeSlots } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { BOOKING_SLOTS } from "@/lib/calendar";
 import { useSession } from "next-auth/react";
-import Link from "next/link";
 
 const MODES = [
   { value: "VIDEO", label: "Video Call", icon: Video },
@@ -36,22 +35,89 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const TIME_SLOTS = generateTimeSlots();
+const TIME_SLOTS = BOOKING_SLOTS;
+
+const STEP_TITLES = ["Your details", "Date & time", "Your skin"];
+
+const label = "block text-[0.85rem] text-ink mb-2";
+const errorText = "text-[0.8rem] text-destructive mt-1.5";
+
+function chip(active: boolean) {
+  return cn(
+    "min-h-11 px-4 rounded-full border text-[0.88rem] transition-colors",
+    active ? "border-moss bg-moss text-paper" : "border-ink/20 text-ink hover:border-ink/50"
+  );
+}
+
+/** The left column: what the consultation actually covers. */
+function Intro() {
+  return (
+    <div className="lg:col-span-5">
+      <p className="eyebrow mb-5">Consultation</p>
+      <h2 className="display-lg text-ink text-balance">Half an hour, spent entirely on your skin.</h2>
+      <p className="mt-6 text-[1rem] leading-[1.7] text-stone max-w-[28rem]">
+        This is where your formula begins. Nothing is mixed until we’ve talked, and there’s no
+        obligation to buy anything afterwards.
+      </p>
+    </div>
+  );
+}
+
+// Defined at module level so the form isn't remounted on every keystroke.
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <section id="consultation" className="bg-travertine">
+      <div className="shell grid grid-cols-1 lg:grid-cols-12 gap-x-10 gap-y-12 py-20 sm:py-24 lg:py-32">
+        <Intro />
+        <div className="lg:col-span-7">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+const card = "bg-card border border-border rounded-[2px] p-6 sm:p-10";
 
 export function ConsultationBookingSection() {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
+  const [error, setError] = useState<string | null>(null);
 
-  const { register, handleSubmit, watch, setValue, trigger, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, getValues, trigger, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { mode: "VIDEO", concerns: [] },
   });
 
+  // Signed-in visitors: fill in what we already know (they can still edit it).
+  useEffect(() => {
+    if (session?.user?.name && !getValues("name")) setValue("name", session.user.name);
+    if (session?.user?.email && !getValues("email")) setValue("email", session.user.email);
+  }, [session, getValues, setValue]);
+
   const selectedMode = watch("mode");
   const selectedConcerns = watch("concerns") ?? [];
   const selectedTime = watch("timeSlot");
+  const selectedDate = watch("date");
+  const [taken, setTaken] = useState<string[]>([]);
+  const [checking, setChecking] = useState(false);
+
+  // Grey out slots already booked, or blocked in Harsheen's calendar, for the chosen day.
+  useEffect(() => {
+    if (!selectedDate) { setTaken([]); return; }
+    let cancelled = false;
+    setChecking(true);
+    fetch(`/api/availability?date=${selectedDate}`)
+      .then((r) => (r.ok ? r.json() : { taken: [] }))
+      .then((j: { taken: string[] }) => {
+        if (cancelled) return;
+        setTaken(j.taken);
+        if (getValues("timeSlot") && j.taken.includes(getValues("timeSlot"))) setValue("timeSlot", "");
+      })
+      .catch(() => {})
+      .finally(() => !cancelled && setChecking(false));
+    return () => { cancelled = true; };
+  }, [selectedDate, getValues, setValue]);
 
   function toggleConcern(concern: string) {
     const next = selectedConcerns.includes(concern)
@@ -62,245 +128,203 @@ export function ConsultationBookingSection() {
 
   async function onSubmit(data: FormData) {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          website: (document.querySelector('#consultation input[name="website"]') as HTMLInputElement | null)?.value ?? "",
+        }),
       });
       if (res.ok) setSubmitted(true);
+      else if (res.status === 429) setError("Too many attempts — please wait a few minutes and try again.");
+      else if (res.status === 409) {
+        setError("Sorry — that time was just taken. Please go back and pick another slot.");
+        setTaken((t) => [...t, data.timeSlot]);
+      } else setError("Something went wrong and your booking didn’t go through. Please try again, or call us on +91 70218 27174.");
     } catch {
-      // handle gracefully
+      setError("We couldn’t reach the server. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
   }
 
-  if (status !== "loading" && !session) {
-    return (
-      <section id="consultation" className="bg-white">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-14 sm:py-20 text-center">
-          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="max-w-md mx-auto space-y-4">
-            <div className="text-sm font-medium text-primary uppercase tracking-widest mb-3">Get Started</div>
-            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-foreground mb-4">
-              Book your free consultation
-            </h2>
-            <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-              30 minutes. No cost. Sign in or create a free account to book your personalized skincare consultation.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button className="rounded-full gap-2" asChild>
-                <Link href="/login"><LogIn className="h-4 w-4" /> Sign in to Book</Link>
-              </Button>
-              <Button variant="outline" className="rounded-full" asChild>
-                <Link href="/register">Create Free Account</Link>
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-    );
-  }
-
   if (submitted) {
     return (
-      <section id="consultation" className="bg-white">
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-14 sm:py-20 flex items-center justify-center min-h-[500px]">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center space-y-4 max-w-md"
-          >
-            <CheckCircle2 className="h-16 w-16 text-primary mx-auto" />
-            <h3 className="font-serif text-2xl font-semibold">Consultation booked!</h3>
-            <p className="text-muted-foreground">
-              We&apos;ve sent a confirmation to your email. We&apos;ll reach out with joining details 24 hours before your session.
-            </p>
-            <Button onClick={() => { setSubmitted(false); setStep(1); }}>Book Another</Button>
-          </motion.div>
+      <Shell>
+        <div className={cn(card, "text-left")} role="status">
+          <CheckCircle2 className="h-9 w-9 text-moss" strokeWidth={1.5} />
+          <h3 className="mt-5 font-display text-[1.75rem] text-ink">Request received.</h3>
+          <p className="mt-3 text-[0.98rem] leading-[1.7] text-stone max-w-[30rem]">
+            We’ve emailed you the details. Harsheen will confirm your time shortly, and you’ll get the call link or studio address before your session.
+          </p>
+          <Button variant="outline" className="mt-8" onClick={() => { setSubmitted(false); setStep(1); }}>
+            Book another
+          </Button>
         </div>
-      </section>
+      </Shell>
     );
   }
 
   return (
-    <section id="consultation" className="bg-white">
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-14 sm:py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <div className="text-sm font-medium text-primary uppercase tracking-widest mb-3">Get Started</div>
-          <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-foreground mb-4">
-            Book your free consultation
-          </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">
-            30 minutes. No cost. Just a conversation about your skin — and what it actually needs.
-          </p>
-        </motion.div>
+    <Shell>
+      <form onSubmit={handleSubmit(onSubmit)} className={cn(card, "relative")} noValidate>
+        {/* Honeypot — hidden from people, bots fill it in */}
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 opacity-0" />
 
-        {/* Step indicator */}
-        <div className="flex items-center justify-center gap-3 mb-10">
+        {/* Progress */}
+        <div className="flex items-baseline justify-between mb-8">
+          <h3 className="font-display text-[1.5rem] text-ink">{STEP_TITLES[step - 1]}</h3>
+          <p className="font-mono text-[0.72rem] uppercase tracking-[0.12em] text-stone">Step {step} of 3</p>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5 mb-10" aria-hidden="true">
           {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center gap-3">
-              <div className={cn(
-                "h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
-                step >= s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-              )}>{s}</div>
-              {s < 3 && <div className={cn("w-12 h-0.5 transition-all", step > s ? "bg-primary" : "bg-border")} />}
-            </div>
+            <div key={s} className={cn("h-[3px] rounded-full transition-colors", step >= s ? "bg-moss" : "bg-ink/10")} />
           ))}
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="max-w-2xl mx-auto">
-            {/* Step 1 — Personal info */}
-            {step === 1 && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <h3 className="font-semibold text-lg">Your details</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Full Name</label>
-                    <Input {...register("name")} placeholder="Priya Sharma" />
-                    {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Email</label>
-                    <Input {...register("email")} type="email" placeholder="priya@example.com" />
-                    {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Phone Number</label>
-                  <Input {...register("phone")} type="tel" placeholder="+91 98765 43210" />
-                  {errors.phone && <p className="text-xs text-destructive mt-1">{errors.phone.message}</p>}
-                </div>
+        {step === 1 && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label htmlFor="bk-name" className={label}>Full name</label>
+                <Input id="bk-name" {...register("name")} autoComplete="name" placeholder="Priya Sharma" />
+                {errors.name && <p className={errorText}>{errors.name.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="bk-email" className={label}>Email</label>
+                <Input id="bk-email" {...register("email")} type="email" autoComplete="email" placeholder="priya@example.com" />
+                {errors.email && <p className={errorText}>{errors.email.message}</p>}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="bk-phone" className={label}>Phone</label>
+              <Input id="bk-phone" {...register("phone")} type="tel" autoComplete="tel" placeholder="+91 98765 43210" />
+              {errors.phone && <p className={errorText}>{errors.phone.message}</p>}
+            </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-3 block">Consultation Mode</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {MODES.map((mode) => (
-                      <button
-                        key={mode.value}
-                        type="button"
-                        onClick={() => setValue("mode", mode.value)}
-                        className={cn(
-                          "flex flex-col items-center gap-2 p-4 rounded-xl border-2 text-sm font-medium transition-all",
-                          selectedMode === mode.value
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-border hover:border-primary/40"
-                        )}
-                      >
-                        <mode.icon className="h-5 w-5" />
-                        {mode.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            <fieldset>
+              <legend className={label}>How would you like to talk?</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {MODES.map((mode) => (
+                  <button
+                    key={mode.value}
+                    type="button"
+                    onClick={() => setValue("mode", mode.value)}
+                    aria-pressed={selectedMode === mode.value}
+                    className={cn(
+                      "flex items-center gap-2.5 h-12 px-4 rounded-md border text-[0.9rem] transition-colors",
+                      selectedMode === mode.value
+                        ? "border-moss bg-moss/[0.06] text-ink"
+                        : "border-ink/20 text-ink hover:border-ink/50"
+                    )}
+                  >
+                    <mode.icon className={cn("h-4 w-4", selectedMode === mode.value ? "text-moss" : "text-stone")} strokeWidth={1.5} />
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
 
-                <Button type="button" className="w-full" onClick={async () => {
-                  const valid = await trigger(["name", "email", "phone"]);
-                  if (valid) setStep(2);
-                }}>
-                  Next → Choose Date & Time
-                </Button>
-              </motion.div>
-            )}
-
-            {/* Step 2 — Date & time */}
-            {step === 2 && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <h3 className="font-semibold text-lg">Pick a date & time</h3>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Date</label>
-                  <Input
-                    {...register("date")}
-                    type="date"
-                    min={new Date().toISOString().split("T")[0]}
-                  />
-                  {errors.date && <p className="text-xs text-destructive mt-1">{errors.date.message}</p>}
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-3 block">Available Time Slots</label>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {TIME_SLOTS.slice(0, 16).map((slot) => (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setValue("timeSlot", slot, { shouldValidate: true })}
-                        className={cn(
-                          "px-3 py-2 rounded-lg border text-xs font-medium transition-all",
-                          selectedTime === slot
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border hover:border-primary/40"
-                        )}
-                      >
-                        {slot}
-                      </button>
-                    ))}
-                  </div>
-                  {errors.timeSlot && <p className="text-xs text-destructive mt-1">{errors.timeSlot.message}</p>}
-                </div>
-
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(1)}>Back</Button>
-                  <Button type="button" className="flex-1" onClick={async () => {
-                    const valid = await trigger(["date", "timeSlot"]);
-                    if (valid) setStep(3);
-                  }}>Next → Skin Concerns</Button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 3 — Skin concerns */}
-            {step === 3 && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <h3 className="font-semibold text-lg">Your skin concerns</h3>
-                <div>
-                  <label className="text-sm font-medium mb-3 block">Select all that apply</label>
-                  <div className="flex flex-wrap gap-2">
-                    {CONCERNS.map((concern) => (
-                      <button
-                        key={concern}
-                        type="button"
-                        onClick={() => toggleConcern(concern)}
-                        className={cn(
-                          "px-4 py-2 rounded-full border text-sm font-medium transition-all",
-                          selectedConcerns.includes(concern)
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border hover:border-primary/40"
-                        )}
-                      >
-                        {concern}
-                      </button>
-                    ))}
-                  </div>
-                  {errors.concerns && <p className="text-xs text-destructive mt-1">{errors.concerns.message}</p>}
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Anything else to share? (optional)</label>
-                  <Textarea
-                    {...register("notes")}
-                    placeholder="Any allergies, medications, or previous reactions you want us to know about..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setStep(2)}>Back</Button>
-                  <Button type="submit" className="flex-1" disabled={loading}>
-                    {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Booking...</> : "Confirm Booking"}
-                  </Button>
-                </div>
-              </motion.div>
-            )}
+            <Button type="button" className="w-full h-12" onClick={async () => {
+              const valid = await trigger(["name", "email", "phone"]);
+              if (valid) setStep(2);
+            }}>
+              Continue to date &amp; time
+            </Button>
           </div>
-        </form>
-      </div>
-    </section>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="bk-date" className={label}>Date</label>
+              <Input id="bk-date" {...register("date")} type="date" min={new Date().toISOString().split("T")[0]} />
+              {errors.date && <p className={errorText}>{errors.date.message}</p>}
+            </div>
+
+            <fieldset>
+              <legend className={label}>Time</legend>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {TIME_SLOTS.map((slot) => {
+                  const unavailable = taken.includes(slot);
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled={unavailable || !selectedDate}
+                      onClick={() => setValue("timeSlot", slot, { shouldValidate: true })}
+                      aria-pressed={selectedTime === slot}
+                      title={unavailable ? "Not available" : undefined}
+                      className={cn(
+                        chip(selectedTime === slot),
+                        "px-2 rounded-md text-[0.82rem] font-mono disabled:cursor-not-allowed disabled:opacity-35 disabled:line-through disabled:hover:border-ink/20"
+                      )}
+                    >
+                      {slot}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-[0.8rem] text-stone" aria-live="polite">
+                {!selectedDate ? "Pick a date first to see open times." : checking ? "Checking availability…" : taken.length >= TIME_SLOTS.length ? "This day is fully booked — please try another date." : null}
+              </p>
+              {errors.timeSlot && <p className={errorText}>{errors.timeSlot.message}</p>}
+            </fieldset>
+
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" className="flex-1 h-12" onClick={() => setStep(1)}>Back</Button>
+              <Button type="button" className="flex-[2] h-12" onClick={async () => {
+                const valid = await trigger(["date", "timeSlot"]);
+                if (valid) setStep(3);
+              }}>Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-6">
+            <fieldset>
+              <legend className={label}>What would you like help with? Choose any.</legend>
+              <div className="flex flex-wrap gap-2">
+                {CONCERNS.map((concern) => (
+                  <button
+                    key={concern}
+                    type="button"
+                    onClick={() => toggleConcern(concern)}
+                    aria-pressed={selectedConcerns.includes(concern)}
+                    className={chip(selectedConcerns.includes(concern))}
+                  >
+                    {concern}
+                  </button>
+                ))}
+              </div>
+              {errors.concerns && <p className={errorText}>{errors.concerns.message}</p>}
+            </fieldset>
+
+            <div>
+              <label htmlFor="bk-notes" className={label}>Anything else we should know? <span className="text-stone">(optional)</span></label>
+              <Textarea
+                id="bk-notes"
+                {...register("notes")}
+                placeholder="Allergies, medication, or reactions you’ve had to products before"
+                rows={3}
+              />
+            </div>
+
+            {error && <p role="alert" className="text-[0.88rem] text-destructive">{error}</p>}
+
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" className="flex-1 h-12" onClick={() => setStep(2)}>Back</Button>
+              <Button type="submit" className="flex-[2] h-12" disabled={loading}>
+                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Booking…</> : "Confirm booking"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </form>
+    </Shell>
   );
 }

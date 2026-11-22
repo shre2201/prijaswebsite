@@ -17,16 +17,7 @@ export default async function HomePage() {
     db.product.findMany({
       where: { isActive: true },
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        comparePrice: true,
-        category: true,
-        isFeatured: true,
-        stock: true,
-        images: true,
-      },
+      select: { id: true, name: true, description: true, images: true },
     }),
     db.blogPost.findMany({
       where: { status: "PUBLISHED" },
@@ -43,18 +34,12 @@ export default async function HomePage() {
     db.service.findMany({
       where: { isActive: true },
       orderBy: { createdAt: "asc" },
-      select: { id: true, name: true, description: true, price: true, duration: true },
+      select: { id: true, name: true, description: true },
     }),
   ]);
 
-  const services = rawServices.map((s) => ({ ...s, price: Number(s.price) }));
-
-  // Decimal → number for client component serialization
-  const products = rawProducts.map((p) => ({
-    ...p,
-    price: Number(p.price),
-    comparePrice: p.comparePrice ? Number(p.comparePrice) : null,
-  }));
+  const products = rawProducts;
+  const services = rawServices;
 
   return (
     <>

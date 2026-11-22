@@ -4,7 +4,6 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { BookOpen } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default async function BlogPage() {
@@ -17,62 +16,44 @@ export default async function BlogPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-white pt-14">
-        {/* Hero */}
-        <div className="bg-gradient-to-br from-cream to-green-50/40 py-16 sm:py-20">
-          <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 text-center">
-            <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">Learn</p>
-            <h1 className="font-serif text-3xl sm:text-4xl font-semibold text-foreground mb-4">
-              Skincare, explained simply
-            </h1>
-            <p className="text-muted-foreground max-w-md mx-auto text-[15px] leading-relaxed">
-              Guides, ingredient breakdowns, myth-busting — everything you need to build a routine that works.
-            </p>
+      <main className="min-h-screen bg-paper">
+        <header className="shell pt-32 sm:pt-40 pb-14 grid grid-cols-1 lg:grid-cols-12 gap-x-10 gap-y-6 items-end">
+          <div className="lg:col-span-7">
+            <p className="eyebrow mb-5">Journal</p>
+            <h1 className="display-xl text-ink text-balance">Notes on skin, food and routine.</h1>
           </div>
-        </div>
+          <p className="lg:col-span-4 lg:col-start-9 text-[1rem] leading-[1.7] text-stone">
+            Ingredient notes, myths worth dropping, and the small habits that change how your skin behaves.
+          </p>
+        </header>
 
-        <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-12">
+        <div className="shell pb-24 sm:pb-32">
           {posts.length === 0 ? (
-            <div className="text-center py-20 text-muted-foreground">
-              <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-20" />
-              <p className="text-sm">No articles published yet.</p>
-              <p className="text-xs mt-1">
-                Check back soon, or{" "}
-                <Link href="/admin/blog" className="text-primary underline">add posts from the admin panel</Link>.
-              </p>
-            </div>
+            <p className="border-t border-ink/15 pt-10 text-stone max-w-md">
+              The first entries are being written. Until then, the best place to ask a skin question is a{" "}
+              <Link href="/#consultation" className="text-link text-ink">consultation</Link>.
+            </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <ul className="border-t border-ink/15">
               {posts.map((post) => (
-                <Link
-                  key={post.id}
-                  href={`/blog/${post.slug}`}
-                  className="group bg-white rounded-2xl border border-border/40 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-                >
-                  <div className="aspect-video bg-gradient-to-br from-cream to-green-50 flex items-center justify-center">
-                    <BookOpen className="h-8 w-8 text-primary/30" />
-                  </div>
-                  <div className="p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      {post.tags[0] && (
-                        <span className="text-[11px] font-medium bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
-                          {post.tags[0]}
-                        </span>
-                      )}
-                      {post.publishedAt && (
-                        <span className="text-[11px] text-muted-foreground">{formatDate(post.publishedAt)}</span>
+                <li key={post.id} className="border-b border-ink/15">
+                  <Link href={`/blog/${post.slug}`} className="group grid grid-cols-1 md:grid-cols-12 gap-x-10 gap-y-2 py-8 sm:py-10">
+                    <p className="md:col-span-3 font-mono text-[0.72rem] uppercase tracking-[0.12em] text-stone pt-1.5">
+                      {post.publishedAt ? formatDate(post.publishedAt) : ""}
+                      {post.tags[0] ? <span className="text-clay"> · {post.tags[0]}</span> : null}
+                    </p>
+                    <div className="md:col-span-9">
+                      <h2 className="font-display text-[1.45rem] sm:text-[1.8rem] leading-tight text-ink group-hover:text-clay transition-colors">
+                        {post.title}
+                      </h2>
+                      {post.excerpt && (
+                        <p className="mt-3 text-[0.98rem] leading-[1.7] text-stone line-clamp-2 max-w-[42rem]">{post.excerpt}</p>
                       )}
                     </div>
-                    <h2 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors leading-snug text-[14px]">
-                      {post.title}
-                    </h2>
-                    {post.excerpt && (
-                      <p className="text-[13px] text-muted-foreground line-clamp-2 leading-relaxed">{post.excerpt}</p>
-                    )}
-                  </div>
-                </Link>
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </main>

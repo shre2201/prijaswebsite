@@ -2,32 +2,38 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarCheck, ShoppingBag, Package, Users, BarChart3, FileText, LogOut, Settings, Star, Sparkles, ClipboardList } from "lucide-react";
+import { LayoutDashboard, CalendarCheck, CalendarDays, ShoppingBag, Package, Users, FileText, LogOut, Settings, Star, Sparkles, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
 
+// Orders and Analytics (revenue) are no longer linked: nothing is sold online —
+// every product is made after a consultation. The pages still exist if needed.
 const LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/orders", label: "Orders", icon: ClipboardList },
+  { href: "/admin/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck },
   { href: "/admin/products", label: "Products", icon: ShoppingBag },
-  { href: "/admin/services", label: "Services", icon: Sparkles },
-  { href: "/admin/inventory", label: "Inventory", icon: Package },
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/services", label: "Treatments", icon: Sparkles },
   { href: "/admin/testimonials", label: "Reviews", icon: Star },
-  { href: "/admin/blog", label: "Blog", icon: FileText },
+  { href: "/admin/customers", label: "Clients", icon: Users },
+  { href: "/admin/inventory", label: "Ingredients", icon: Package },
+  { href: "/admin/blog", label: "Journal", icon: FileText },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-60 min-h-screen bg-foreground text-background flex flex-col sticky top-0">
-      <div className="p-4 border-b border-background/10">
-        <Link href="/admin" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="Prijas" width={36} height={36} className="object-contain brightness-0 invert" />
-          <span className="font-serif text-base font-semibold text-primary">Admin</span>
+    <aside className="w-60 h-screen bg-ink text-paper flex flex-col sticky top-0 shrink-0">
+      <div className="px-4 py-5 border-b border-paper/10">
+        <Link href="/admin" className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-paper">
+            <Image src="/logo.png" alt="" width={28} height={27} className="object-contain" />
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="font-display text-[1.35rem]">Prijas</span>
+            <span className="font-mono text-[0.6rem] uppercase tracking-[0.16em] text-paper/50 mt-1">Studio admin</span>
+          </span>
         </Link>
       </div>
 
@@ -41,36 +47,43 @@ export function AdminSidebar() {
               key={link.href}
               href={link.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-2.5 rounded-md text-[0.9rem] transition-colors border-l-2",
                 active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-background/60 hover:bg-background/10 hover:text-background"
+                  ? "bg-paper/10 text-paper border-clay"
+                  : "text-paper/65 border-transparent hover:bg-paper/5 hover:text-paper"
               )}
             >
-              <link.icon className="h-4 w-4 shrink-0" />
+              <link.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
               {link.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-3 border-t border-background/10 space-y-0.5">
+      <div className="p-3 border-t border-paper/10 space-y-0.5">
+        <Link
+          href="/"
+          target="_blank"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-md text-[0.9rem] text-paper/65 hover:bg-paper/5 hover:text-paper transition-colors"
+        >
+          <ExternalLink className="h-4 w-4" strokeWidth={1.5} /> View website
+        </Link>
         <Link
           href="/admin/settings"
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-[0.9rem] transition-colors",
             pathname === "/admin/settings"
-              ? "bg-primary text-primary-foreground"
-              : "text-background/60 hover:bg-background/10 hover:text-background"
+              ? "bg-paper/10 text-paper"
+              : "text-paper/65 hover:bg-paper/5 hover:text-paper"
           )}
         >
-          <Settings className="h-4 w-4" /> Settings
+          <Settings className="h-4 w-4" strokeWidth={1.5} /> Settings
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-background/60 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-[0.9rem] text-paper/65 hover:bg-paper/5 hover:text-paper transition-colors"
         >
-          <LogOut className="h-4 w-4" /> Sign Out
+          <LogOut className="h-4 w-4" strokeWidth={1.5} /> Sign out
         </button>
       </div>
     </aside>

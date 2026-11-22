@@ -22,7 +22,7 @@ export default async function TestimonialsAdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Reviews</h1>
+        <h1 className="font-display text-[2rem] font-light text-ink">Reviews</h1>
         <p className="text-muted-foreground text-sm mt-1">{pending} pending approval · {testimonials.length} total</p>
       </div>
 

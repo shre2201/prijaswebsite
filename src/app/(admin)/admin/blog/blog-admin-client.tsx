@@ -151,7 +151,7 @@ export function BlogAdminClient({ posts }: Props) {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Blog</h1>
+          <h1 className="font-display text-[2rem] font-light text-ink">Blog</h1>
           <p className="text-muted-foreground text-sm mt-1">
             {posts.filter(p => p.status === "PUBLISHED").length} published · {posts.filter(p => p.status === "DRAFT").length} drafts
           </p>

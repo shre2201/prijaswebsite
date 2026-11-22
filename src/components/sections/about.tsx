@@ -1,89 +1,83 @@
-"use client";
-import { motion } from "framer-motion";
-import { Leaf, Heart, Shield, Sparkles } from "lucide-react";
 import Image from "next/image";
 
-const VALUES = [
-  { icon: Leaf, title: "100% Natural", desc: "No sulphates, parabens, or synthetic fragrances. Every ingredient is carefully sourced." },
-  { icon: Heart, title: "Small-batch crafted", desc: "Handmade in small batches to ensure freshness and quality in every bottle." },
-  { icon: Shield, title: "Expert Certified", desc: "Certified Skincare Esthetician & Nutritionist." },
-  { icon: Sparkles, title: "Truly personalized", desc: "No two skins are the same. Neither are our products." },
+const GOES_IN = [
+  "Natural ingredients, sourced with care",
+  "Blends chosen after your consultation",
+  "Small batches, mixed by hand",
 ];
+
+const STAYS_OUT = ["Sulphates", "Parabens", "Synthetic fragrance", "Testing on animals"];
 
 export function AboutSection() {
   return (
-    <section id="about" className="bg-white">
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-14 sm:py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center max-w-4xl mx-auto">
-          {/* Visual */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55 }}
-            className="relative"
-          >
-            <div className="aspect-[4/5] rounded-3xl bg-gradient-to-br from-primary/10 via-sage/10 to-cream flex items-center justify-center p-6 sm:p-14 lg:p-20">
-              <div className="w-full h-full rounded-2xl overflow-hidden">
-                <Image
-                  src="/founder.png"
-                  alt="Harsheen Kaur — Founder, Prijas Skincare"
-                  width={500}
-                  height={625}
-                  className="w-full h-full object-cover object-center"
-                  priority
-                />
-              </div>
+    <section id="about" className="bg-travertine">
+      <div className="shell grid grid-cols-1 lg:grid-cols-12 gap-x-10 gap-y-12 py-20 sm:py-24 lg:py-32">
+        {/* Portrait — the source is a small selfie, so it's shown modestly in an arch
+            with a light grade that pulls its indoor colour toward the site palette. */}
+        <figure className="lg:col-span-5 flex flex-col items-center lg:items-start">
+          <div className="relative w-full max-w-[19rem] sm:max-w-[21rem]">
+            <div
+              className="absolute inset-0 translate-x-3 translate-y-3 rounded-t-full border border-clay/50"
+              aria-hidden="true"
+            />
+            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-t-full bg-paper">
+              <Image
+                src="/founder.png"
+                alt="Harsheen Kaur, founder of Prijas"
+                fill
+                sizes="(min-width: 640px) 21rem, 19rem"
+                className="object-cover object-[50%_30%] scale-[1.04] [filter:saturate(0.82)_sepia(0.1)_contrast(0.96)_brightness(1.03)]"
+              />
             </div>
-            <div className="absolute -bottom-5 -right-5 bg-white rounded-2xl shadow-lg border border-border/30 p-4 max-w-[170px]">
-              <p className="text-[13px] font-bold text-foreground">Harsheen Kaur</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">Founder · Certified Esthetician & Nutritionist</p>
-            </div>
-          </motion.div>
+          </div>
+          <figcaption className="mt-7 flex flex-col items-center lg:items-start gap-1 text-center lg:text-left">
+            <span className="font-display italic text-[1.35rem] text-ink">Harsheen Kaur</span>
+            <span className="font-mono text-[0.7rem] uppercase tracking-[0.12em] text-stone">
+              Founder · Certified esthetician &amp; nutritionist
+            </span>
+          </figcaption>
+        </figure>
 
-          {/* Copy */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55, delay: 0.08 }}
-            className="space-y-5"
-          >
+        {/* Story */}
+        <div className="lg:col-span-7 lg:pl-6 flex flex-col justify-center">
+          <p className="eyebrow mb-5">The person mixing your jar</p>
+          <h2 className="display-lg text-ink text-balance max-w-[36rem]">
+            Prijas began with years of using the wrong products.
+          </h2>
+
+          <div className="mt-8 space-y-5 max-w-[34rem] text-[1.02rem] leading-[1.75] text-stone">
+            <p>
+              Prijas takes a whole-person view of skin. Harsheen looks at what your skin is doing,
+              but also at what you eat, how you sleep and the routine you already have.
+            </p>
+            <p>
+              It’s built on one belief: you deserve personal care, not a generic solution.
+              So nothing is mixed until you’ve talked.
+            </p>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-10 max-w-[40rem]">
             <div>
-              <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-2">Our Story</p>
-              <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground leading-snug">
-                Born from years of struggling with the wrong products
-              </h2>
+              <h3 className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-ink mb-3">What goes in</h3>
+              <ul className="border-t border-ink/15">
+                {GOES_IN.map((item) => (
+                  <li key={item} className="py-3 border-b border-ink/15 text-[0.95rem] text-ink">
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-
-            <p className="text-[14px] text-muted-foreground leading-relaxed">
-              Prijas provides a holistic approach to aesthetics. Experience rejuvenating services designed to nourish and restore your natural radiance. 
-            </p>
-            <p className="text-[14px] text-muted-foreground leading-relaxed">
-              Prijas is built on one belief: you deserve personalized care, not generic solutions. Every product starts with a conversation.
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              {VALUES.map((v, i) => (
-                <motion.div
-                  key={v.title}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.15 + i * 0.08 }}
-                  className="flex gap-2.5 items-start p-3 rounded-xl bg-cream/40 border border-border/30"
-                >
-                  <div className="mt-0.5 h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <v.icon className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-semibold text-foreground">{v.title}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{v.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
+            <div>
+              <h3 className="font-mono text-[0.7rem] uppercase tracking-[0.14em] text-ink mb-3">What stays out</h3>
+              <ul className="border-t border-ink/15">
+                {STAYS_OUT.map((item) => (
+                  <li key={item} className="py-3 border-b border-ink/15 text-[0.95rem] text-stone line-through decoration-clay/60 decoration-1">
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

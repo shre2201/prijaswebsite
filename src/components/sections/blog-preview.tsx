@@ -1,8 +1,5 @@
-"use client";
-import { motion } from "framer-motion";
-import { ArrowRight, BookOpen } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export interface PreviewPost {
@@ -15,75 +12,50 @@ export interface PreviewPost {
 }
 
 export function BlogPreviewSection({ posts }: { posts: PreviewPost[] }) {
-  return (
-    <section id="blog" className="bg-cream/30">
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-14 sm:py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12"
-        >
-          <div>
-            <div className="text-sm font-medium text-primary uppercase tracking-widest mb-3">Learn</div>
-            <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-foreground">
-              Skincare, explained simply
-            </h2>
-          </div>
-          <Button variant="outline" asChild>
-            <Link href="/blog" className="flex items-center gap-2">
-              All Articles <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </motion.div>
+  // Nothing published yet — leave the section out rather than show an empty shelf.
+  if (posts.length === 0) return null;
 
-        {posts.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-20" />
-            <p className="text-sm">No articles published yet.</p>
-            <p className="text-xs mt-1">
-              Add posts from the{" "}
-              <Link href="/admin/blog" className="text-primary underline">admin panel</Link>.
-            </p>
+  return (
+    <section id="blog" className="bg-paper">
+      <div className="shell py-20 sm:py-24 lg:py-32">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
+          <div>
+            <p className="eyebrow mb-5">Journal</p>
+            <h2 className="display-lg text-ink text-balance">Notes on skin, food and routine.</h2>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {posts.map((post, i) => (
-              <motion.article
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group bg-white rounded-2xl overflow-hidden border border-border/40 hover:shadow-lg transition-all duration-300"
+          <Link href="/blog" className="text-link text-[0.92rem] text-ink self-start sm:self-auto py-2">
+            All articles
+          </Link>
+        </div>
+
+        <ul className="border-t border-ink/15">
+          {posts.map((post) => (
+            <li key={post.id} className="border-b border-ink/15">
+              <Link
+                href={`/blog/${post.slug}`}
+                className="group grid grid-cols-1 md:grid-cols-12 gap-x-10 gap-y-2 py-8 sm:py-10"
               >
-                <Link href={`/blog/${post.slug}`}>
-                  <div className="aspect-video bg-gradient-to-br from-cream to-green-50 flex items-center justify-center">
-                    <BookOpen className="h-8 w-8 text-primary/30" />
-                  </div>
-                  <div className="p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      {post.tags[0] && (
-                        <span className="text-[11px] font-medium bg-primary/10 text-primary px-2.5 py-0.5 rounded-full">
-                          {post.tags[0]}
-                        </span>
-                      )}
-                      {post.publishedAt && (
-                        <span className="text-[11px] text-muted-foreground">{formatDate(post.publishedAt)}</span>
-                      )}
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors leading-snug text-[14px]">
-                      {post.title}
-                    </h3>
-                    {post.excerpt && (
-                      <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{post.excerpt}</p>
-                    )}
-                  </div>
-                </Link>
-              </motion.article>
-            ))}
-          </div>
-        )}
+                <p className="md:col-span-3 font-mono text-[0.72rem] uppercase tracking-[0.12em] text-stone pt-1.5">
+                  {post.publishedAt ? formatDate(post.publishedAt) : ""}
+                  {post.tags[0] ? <span className="text-clay"> · {post.tags[0]}</span> : null}
+                </p>
+                <div className="md:col-span-8">
+                  <h3 className="font-display text-[1.45rem] sm:text-[1.7rem] leading-tight text-ink group-hover:text-clay transition-colors">
+                    {post.title}
+                  </h3>
+                  {post.excerpt && (
+                    <p className="mt-3 text-[0.98rem] leading-[1.7] text-stone line-clamp-2 max-w-[40rem]">{post.excerpt}</p>
+                  )}
+                </div>
+                <ArrowUpRight
+                  className="hidden md:block md:col-span-1 justify-self-end h-5 w-5 text-ink/40 group-hover:text-clay transition-colors mt-2"
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                />
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

@@ -6,14 +6,12 @@ export default async function ProductsPage() {
     orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
   });
 
-  const universalCount = products.filter((p) => p.category === "UNIVERSAL").length;
-  const personalizedCount = products.filter((p) => p.category === "PERSONALIZED").length;
   const activeCount = products.filter((p) => p.isActive).length;
 
   return (
     <ProductsClient
       products={products}
-      stats={{ universalCount, personalizedCount, activeCount }}
+      stats={{ activeCount }}
     />
   );
 }

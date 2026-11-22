@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { sendBookingStatusUpdate } from "@/lib/email";
+import { formatDate } from "@/lib/utils";
 
 const updateSchema = z.object({
   status: z.enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "RESCHEDULED"]).optional(),
@@ -19,6 +21,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const body = await req.json();
     const data = updateSchema.parse(body);
 
+    const before = await db.booking.findUnique({ where: { id: params.id }, select: { status: true } });
+
     const booking = await db.booking.update({
       where: { id: params.id },
       data: {
@@ -28,6 +32,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       },
       include: { user: { select: { name: true, email: true } } },
     });
+
+    // Tell the client when Harsheen confirms or cancels (only on an actual change).
+    if (data.status && data.status !== before?.status && (data.status === "CONFIRMED" || data.status === "CANCELLED")) {
+      const to = booking.email ?? booking.user?.email;
+      if (to) {
+        await sendBookingStatusUpdate({
+          to,
+          name: booking.name ?? booking.user?.name ?? "there",
+          date: formatDate(booking.date),
+          timeSlot: booking.timeSlot,
+          mode: booking.mode,
+          status: data.status,
+        });
+      }
+    }
 
     return NextResponse.json(booking);
   } catch (err) {

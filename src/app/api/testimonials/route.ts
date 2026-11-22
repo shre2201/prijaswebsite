@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -21,9 +22,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(req, "review", 3, 10 * 60_000)) {
+    return NextResponse.json({ error: "Too many requests — please try again in a few minutes." }, { status: 429 });
+  }
   try {
     const session = await auth();
     const body = await req.json();
+    if (typeof body?.website === "string" && body.website.trim() !== "") {
+      return NextResponse.json({ ok: true }, { status: 201 }); // honeypot: ignore bots quietly
+    }
     const data = schema.parse(body);
 
     const testimonial = await db.testimonial.create({

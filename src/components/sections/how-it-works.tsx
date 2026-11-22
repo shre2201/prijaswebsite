@@ -1,82 +1,60 @@
-"use client";
-import { motion } from "framer-motion";
-import { Calendar, MessageSquare, Package, RefreshCcw } from "lucide-react";
-
+// A genuine four-step sequence, so the numbering is real.
 const STEPS = [
   {
-    icon: Calendar,
-    num: "01",
     title: "Book a consultation",
-    desc: "Pick a time that works. Video, phone, or in-person, your choice.",
-    color: "bg-blue-50 text-blue-600 border-blue-100",
+    desc: "Pick a time that suits you. Talk over video, on the phone, or in person.",
+    meta: "Online or in person",
   },
   {
-    icon: MessageSquare,
-    num: "02",
-    title: "Skin analysis",
-    desc: "A 30-minute session about your skin type, concerns, lifestyle, and goals.",
-    color: "bg-primary/8 text-primary border-primary/15",
+    title: "Talk it through",
+    desc: "Thirty minutes on your skin type, what’s bothering you, your lifestyle and what you’d like to change.",
+    meta: "30 min",
   },
   {
-    icon: Package,
-    num: "03",
-    title: "Receive your products",
-    desc: "Your formula is handcrafted and delivered within 5–7 days.",
-    color: "bg-orange-50 text-orange-600 border-orange-100",
+    title: "Your formula is made",
+    desc: "Harsheen blends your products by hand and sends them to you.",
+    meta: "5–7 days",
   },
   {
-    icon: RefreshCcw,
-    num: "04",
-    title: "Refine & reorder",
-    desc: "We track your progress. Formulas evolve as your skin does.",
-    color: "bg-purple-50 text-purple-600 border-purple-100",
+    title: "Adjust as you go",
+    desc: "We check in on how your skin is responding. When it changes, so does the formula.",
+    meta: "Ongoing",
   },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="bg-cream/25">
-      <div className="max-w-5xl mx-auto px-5 sm:px-8 lg:px-12 py-14 sm:py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-2">The Process</p>
-          <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-foreground mb-3">
-            From conversation to custom skincare
-          </h2>
-          <p className="text-[14px] text-muted-foreground max-w-sm mx-auto">
-            Four simple steps from knowing nothing about your skin to having products made exactly for it.
-          </p>
-        </motion.div>
-
-        {/* Steps */}
-        <div className="relative">
-          {/* Connector */}
-          <div className="absolute top-10 left-[calc(12.5%+20px)] right-[calc(12.5%+20px)] h-px bg-gradient-to-r from-transparent via-border to-transparent hidden lg:block" />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {STEPS.map((step, i) => (
-              <motion.div
-                key={step.num}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.12 }}
-                className="flex flex-col items-center text-center"
-              >
-                <div className={`relative z-10 h-20 w-20 rounded-2xl border ${step.color} flex flex-col items-center justify-center mb-4 shadow-sm`}>
-                  <step.icon className="h-7 w-7" />
-                  <span className="text-[10px] font-bold mt-0.5 opacity-50">{step.num}</span>
-                </div>
-                <h3 className="text-[14px] font-semibold text-foreground mb-1.5">{step.title}</h3>
-                <p className="text-[12px] text-muted-foreground leading-relaxed max-w-[180px]">{step.desc}</p>
-              </motion.div>
-            ))}
+    <section id="how-it-works" className="bg-paper">
+      <div className="shell grid grid-cols-1 lg:grid-cols-12 gap-x-10 gap-y-10 py-20 sm:py-24 lg:py-32">
+        <div className="lg:col-span-4">
+          <div className="lg:sticky lg:top-28">
+            <p className="eyebrow mb-5">How it works</p>
+            <h2 className="display-lg text-ink text-balance">
+              From a conversation to a jar on your shelf.
+            </h2>
           </div>
         </div>
+
+        <ol className="lg:col-span-7 lg:col-start-6 border-t border-ink/15">
+          {STEPS.map((step, i) => (
+            <li
+              key={step.title}
+              className="grid grid-cols-[3rem_1fr] sm:grid-cols-[5rem_1fr_auto] gap-x-4 sm:gap-x-6 py-7 sm:py-9 border-b border-ink/15"
+            >
+              <span className="font-display font-light text-[2rem] sm:text-[2.6rem] leading-none text-clay" aria-hidden="true">
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="font-display text-[1.3rem] sm:text-[1.45rem] leading-tight text-ink">{step.title}</h3>
+                <p className="mt-2 text-[0.98rem] leading-[1.7] text-stone max-w-[30rem]">{step.desc}</p>
+                <p className="sm:hidden mt-3 font-mono text-[0.7rem] uppercase tracking-[0.12em] text-ink/70">{step.meta}</p>
+              </div>
+              <span className="hidden sm:block font-mono text-[0.72rem] uppercase tracking-[0.12em] text-ink/70 pt-2 whitespace-nowrap">
+                {step.meta}
+              </span>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );

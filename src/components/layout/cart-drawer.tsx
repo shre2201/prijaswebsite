@@ -46,7 +46,7 @@ export function CartDrawer() {
           ) : (
             items.map((item) => (
               <div key={item.id} className="flex gap-3 p-3 rounded-xl border border-border/40 bg-cream/20">
-                <div className="h-14 w-14 rounded-lg bg-gradient-to-br from-cream to-green-50 flex items-center justify-center text-2xl flex-shrink-0">
+                <div className="h-14 w-14 rounded-[2px] bg-travertine flex items-center justify-center text-2xl flex-shrink-0">
                   {item.emoji}
                 </div>
                 <div className="flex-1 min-w-0">

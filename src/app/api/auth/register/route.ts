@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -11,6 +12,9 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(req, "register", 5, 10 * 60_000)) {
+    return NextResponse.json({ error: "Too many requests — please try again in a few minutes." }, { status: 429 });
+  }
   try {
     const body = await req.json();
     const { name, email, password, phone } = schema.parse(body);

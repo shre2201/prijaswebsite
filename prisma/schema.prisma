@@ -120,7 +120,12 @@ model Product {
 
 model Booking {
   id          String           @id @default(cuid())
-  userId      String
+  userId      String?
+  // Contact details captured by the booking form (guests and signed-in users alike)
+  name        String?
+  email       String?
+  phone       String?
+  notes       String?
   date        DateTime
   timeSlot    String
   mode        ConsultationMode
@@ -132,7 +137,7 @@ model Booking {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Order {
@@ -280,4 +285,21 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+/// Harsheen's own calendar entries. Same date convention as Booking (UTC-midnight date + local "HH:MM").
+model CalendarEvent {
+  id             String   @id @default(cuid())
+  title          String
+  date           DateTime
+  startTime      String?  // "HH:MM", 24h; null when allDay
+  endTime        String?
+  allDay         Boolean  @default(false)
+  notes          String?
+  /// When true, the booking form won't offer slots that overlap this event.
+  blocksBookings Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([date])
 }

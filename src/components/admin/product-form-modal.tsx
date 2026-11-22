@@ -4,22 +4,17 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, X, Percent, ImagePlus, Trash2 } from "lucide-react";
+import { Loader2, X, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn, slugify, formatPrice } from "@/lib/utils";
-import type { Product, ProductCategory } from "@prisma/client";
+import { slugify } from "@/lib/utils";
+import type { Product } from "@prisma/client";
 
 const schema = z.object({
   name: z.string().min(2, "Name required"),
   slug: z.string().min(2, "Slug required"),
   description: z.string().min(10, "Description required"),
-  category: z.enum(["UNIVERSAL", "PERSONALIZED"]),
-  price: z.number().positive("Price must be positive"),
-  comparePrice: z.number().positive().optional(),
-  stock: z.number().int().min(0),
-  sku: z.string().optional(),
   isActive: z.boolean(),
   isFeatured: z.boolean(),
 });
@@ -47,30 +42,17 @@ export function ProductFormModal({ product, onClose }: Props) {
           name: product.name,
           slug: product.slug,
           description: product.description,
-          category: product.category,
-          price: Number(product.price),
-          comparePrice: product.comparePrice ? Number(product.comparePrice) : undefined,
-          stock: product.stock,
-          sku: product.sku ?? "",
           isActive: product.isActive,
           isFeatured: product.isFeatured,
         }
-      : { category: "UNIVERSAL", isActive: true, isFeatured: false, stock: 0 },
+      : { isActive: true, isFeatured: false },
   });
 
   const name = watch("name");
-  const price = watch("price");
-  const comparePrice = watch("comparePrice");
-  const selectedCategory = watch("category");
 
   useEffect(() => {
     if (!isEdit && name) setValue("slug", slugify(name), { shouldValidate: false });
   }, [name, isEdit, setValue]);
-
-  const discount =
-    comparePrice && comparePrice > 0 && price > 0 && comparePrice > price
-      ? Math.round(((comparePrice - price) / comparePrice) * 100)
-      : 0;
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -175,19 +157,19 @@ export function ProductFormModal({ product, onClose }: Props) {
                   onChange={handleImageUpload}
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5">JPG, PNG, WebP or GIF · max 5 MB</p>
+              <p className="text-[11px] text-muted-foreground mt-1.5">Best: a transparent PNG/WebP cut-out of the product with its natural ingredient (like the existing ones) · max 5 MB</p>
             </div>
 
             {/* Name + Slug */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium mb-1.5 block">Product Name *</label>
-                <Input {...register("name")} placeholder="Neem & Turmeric Face Wash" />
+                <Input {...register("name")} placeholder="Kasturi Turmeric Moisturiser" />
                 {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
               </div>
               <div>
                 <label className="text-xs font-medium mb-1.5 block">Slug *</label>
-                <Input {...register("slug")} placeholder="neem-turmeric-face-wash" />
+                <Input {...register("slug")} placeholder="kasturi-turmeric-moisturiser" />
                 {errors.slug && <p className="text-xs text-destructive mt-1">{errors.slug.message}</p>}
               </div>
             </div>
@@ -199,85 +181,19 @@ export function ProductFormModal({ product, onClose }: Props) {
               {errors.description && <p className="text-xs text-destructive mt-1">{errors.description.message}</p>}
             </div>
 
-            {/* Category */}
-            <div>
-              <label className="text-xs font-medium mb-2 block">Category *</label>
-              <div className="grid grid-cols-2 gap-3">
-                {(["UNIVERSAL", "PERSONALIZED"] as ProductCategory[]).map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setValue("category", cat)}
-                    className={cn(
-                      "p-3 rounded-xl border-2 text-sm font-medium text-left transition-all",
-                      selectedCategory === cat
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-primary/40"
-                    )}
-                  >
-                    <p className="font-semibold">{cat === "UNIVERSAL" ? "Universal" : "Personalized"}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 font-normal">
-                      {cat === "UNIVERSAL" ? "Ready-to-ship" : "Customized per customer"}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Pricing */}
-            <div className="rounded-xl border border-border p-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <Percent className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold">Pricing & Discount</span>
-                {discount > 0 && (
-                  <span className="ml-auto text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">
-                    {discount}% off
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium mb-1.5 block">Selling Price (₹) *</label>
-                  <Input {...register("price", { valueAsNumber: true })} type="number" step="0.01" placeholder="799" />
-                  {errors.price && <p className="text-xs text-destructive mt-1">{errors.price.message}</p>}
-                </div>
-                <div>
-                  <label className="text-xs font-medium mb-1.5 block">Original Price (₹) — strike-through</label>
-                  <Input {...register("comparePrice", { valueAsNumber: true })} type="number" step="0.01" placeholder="999" />
-                  <p className="text-xs text-muted-foreground mt-1">Leave blank if no discount</p>
-                </div>
-              </div>
-              {discount > 0 && price > 0 && (
-                <div className="bg-green-50 rounded-lg px-3 py-2 text-sm">
-                  Customer sees: <strong>{formatPrice(price)}</strong>{" "}
-                  <span className="line-through text-muted-foreground">{formatPrice(comparePrice!)}</span>{" "}
-                  <span className="text-green-700 font-semibold">Save {formatPrice(comparePrice! - price)} ({discount}% off)</span>
-                </div>
-              )}
-            </div>
-
-            {/* Stock + SKU */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium mb-1.5 block">Stock Quantity *</label>
-                <Input {...register("stock", { valueAsNumber: true })} type="number" min="0" placeholder="50" />
-                {errors.stock && <p className="text-xs text-destructive mt-1">{errors.stock.message}</p>}
-              </div>
-              <div>
-                <label className="text-xs font-medium mb-1.5 block">SKU (optional)</label>
-                <Input {...register("sku")} placeholder="PRJ-001" />
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Prices and stock aren’t shown on the website — every product is made after a consultation.
+            </p>
 
             {/* Flags */}
             <div className="flex gap-4">
               <label className="flex items-center gap-2.5 cursor-pointer select-none">
                 <input type="checkbox" {...register("isActive")} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                <span className="text-sm font-medium">Active (visible on store)</span>
+                <span className="text-sm font-medium">Show on website</span>
               </label>
               <label className="flex items-center gap-2.5 cursor-pointer select-none">
                 <input type="checkbox" {...register("isFeatured")} className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                <span className="text-sm font-medium">Featured (shown first)</span>
+                <span className="text-sm font-medium">Show first</span>
               </label>
             </div>
           </div>

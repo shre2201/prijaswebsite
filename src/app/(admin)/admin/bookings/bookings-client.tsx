@@ -8,7 +8,16 @@ import { CalendarDays, List, Clock, Video, Phone, MapPin, ChevronLeft, ChevronRi
 import { cn } from "@/lib/utils";
 import type { Booking, User } from "@prisma/client";
 
-type BookingWithUser = Booking & { user: Pick<User, "name" | "email" | "phone"> };
+type BookingWithUser = Booking & { user: Pick<User, "name" | "email" | "phone"> | null };
+
+// Guest bookings carry their own contact details; older bookings only have the linked account.
+function contact(b: BookingWithUser) {
+  return {
+    name: b.name ?? b.user?.name ?? "Guest",
+    email: b.email ?? b.user?.email ?? "",
+    phone: b.phone ?? b.user?.phone ?? "",
+  };
+}
 
 const STATUS_COLORS: Record<string, "default" | "warning" | "success" | "destructive" | "secondary"> = {
   PENDING: "warning", CONFIRMED: "success", COMPLETED: "secondary", CANCELLED: "destructive", RESCHEDULED: "secondary",
@@ -47,7 +56,7 @@ export function BookingsClient({ bookings }: { bookings: BookingWithUser[] }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Bookings</h1>
+          <h1 className="font-display text-[2rem] font-light text-ink">Bookings</h1>
           <p className="text-muted-foreground text-sm mt-1">
             {pending.length} pending · {upcoming.length} upcoming
           </p>
@@ -123,7 +132,7 @@ export function BookingsClient({ bookings }: { bookings: BookingWithUser[] }) {
                           "bg-muted text-muted-foreground"
                         )}>
                           <ModeIcon className="h-2 w-2 shrink-0" />
-                          {b.user.name.split(" ")[0]} {b.timeSlot}
+                          {contact(b).name.split(" ")[0]} {b.timeSlot}
                         </div>
                       );
                     })}
@@ -149,11 +158,16 @@ export function BookingsClient({ bookings }: { bookings: BookingWithUser[] }) {
                   <div key={booking.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/60 hover:bg-muted/20 transition-colors">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
-                        {booking.user.name.charAt(0)}
+                        {contact(booking).name.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{booking.user.name}</p>
-                        <p className="text-xs text-muted-foreground">{booking.user.email}</p>
+                        <p className="font-medium text-sm truncate">
+                          {contact(booking).name}
+                          {!booking.userId && <span className="ml-2 text-[10px] font-normal text-muted-foreground uppercase tracking-wide">guest</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {contact(booking).email}{contact(booking).phone ? ` · ${contact(booking).phone}` : ""}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {formatDate(booking.date)} · {booking.timeSlot}
@@ -169,6 +183,9 @@ export function BookingsClient({ bookings }: { bookings: BookingWithUser[] }) {
                               <span className="text-[10px] text-muted-foreground">+{booking.concerns.length - 3}</span>
                             )}
                           </div>
+                        )}
+                        {booking.notes && (
+                          <p className="text-xs text-muted-foreground mt-1.5 italic line-clamp-2">“{booking.notes}”</p>
                         )}
                       </div>
                     </div>
