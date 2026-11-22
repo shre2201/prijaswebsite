@@ -43,3 +43,6 @@ next-env.d.ts
 fix-database.command
 fix-database.log
 setup-local.sh
+
+# admin photo uploads (stored on a persistent disk in production)
+/uploads/

@@ -11,6 +11,9 @@ const db = new PrismaClient({ adapter });
 async function main() {
   const email = process.env.ADMIN_EMAIL ?? "admin@prijas.in";
   const password = process.env.ADMIN_PASSWORD ?? "prijas@admin123";
+  if (process.env.NODE_ENV === "production" && (!process.env.ADMIN_PASSWORD || password.length < 10)) {
+    throw new Error("Set a strong ADMIN_PASSWORD (10+ characters) before seeding a production database.");
+  }
   const name = process.env.ADMIN_NAME ?? "Prijas Admin";
 
   const existing = await db.user.findUnique({ where: { email } });

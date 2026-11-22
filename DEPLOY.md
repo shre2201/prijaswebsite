@@ -1,75 +1,64 @@
-# Deploying Prijas
+# Deploying Prijas on Railway
 
-Checklist for putting this version live on Vercel. Do the steps in order.
+The site runs as one always-on Node.js service plus a managed Postgres database, both on Railway.
+Every push to the deployed branch redeploys automatically. On each start the app:
 
-## 1. Environment variables (Vercel → Project → Settings → Environment Variables)
+1. applies database migrations (`prisma migrate deploy`)
+2. creates the admin account once, from `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+3. adds any of the 12 catalogue products that are missing (never overwrites your edits)
+4. starts the site; Railway checks `/api/health` and restarts it if it stops responding
 
-| Variable | Required | Value |
-|---|---|---|
-| `DATABASE_URL` | yes | Production Postgres URL (already set if the site is live) |
-| `AUTH_SECRET` | yes | Long random string. Generate one with `npx auth secret` |
-| `NEXT_PUBLIC_SITE_URL` | yes | Your live address, e.g. `https://prijas.in` (used by sharing previews and the sitemap) |
-| `RESEND_API_KEY` | for emails | From resend.com → API Keys |
-| `EMAIL_FROM` | for emails | A sender on a domain you have verified in Resend, e.g. `Prijas Skincare <hello@prijas.in>` |
-| `STUDIO_EMAIL` | optional | Where new-booking alerts go (default `prijasskincare@gmail.com`) |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | only for seeding | Used once by `npm run seed` to create the admin account |
+## One-time setup (about 15 minutes)
 
-Until `EMAIL_FROM` uses a verified domain, Resend only delivers to the Resend account owner, so clients won't get emails.
+1. **Account.** Sign up at railway.com with GitHub and choose the **Hobby** plan ($5/month, includes usage; never sleeps).
+2. **New project → Deploy from GitHub repo →** `shre2201/prijaswebsite`.
+   In the service's **Settings → Source**, set the branch to `redesign` (switch to `master` after the merge below).
+3. **Region.** Service **Settings → Region → Southeast Asia (Singapore)**. Do the same for the database in step 4.
+4. **Database.** In the project, **+ New → Database → PostgreSQL**. Then, in the Postgres service, open **Backups** and turn on scheduled backups.
+5. **Disk for photo uploads.** Right-click the website service → **Attach volume**, mount path `/data`.
+6. **Variables.** In the website service → **Variables**, add:
 
-## 2. Database
+   | Name | Value |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (type it exactly; Railway links it over the private network) |
+   | `AUTH_SECRET` | a long random string. Run `openssl rand -base64 32` on your Mac and paste the output |
+   | `ADMIN_EMAIL` | the email Harsheen will sign in with |
+   | `ADMIN_PASSWORD` | a strong password, 10+ characters (only used to create the account the first time) |
+   | `UPLOAD_DIR` | `/data/uploads` |
+   | `NEXT_PUBLIC_SITE_URL` | the site address, e.g. `https://prijas.in`, or the Railway address from step 7 |
+   | `RESEND_API_KEY` | from resend.com → API Keys (emails) |
+   | `EMAIL_FROM` | `Prijas Skincare <hello@your-domain>` once the domain is verified in Resend |
+   | `STUDIO_EMAIL` | where new-booking alerts go (default `prijasskincare@gmail.com`) |
 
-Run these from your computer with the **production** URL. They don't change anything until step 2b.
+   `NEXT_PUBLIC_SITE_URL` is built into the site, so redeploy after changing it.
+7. **Address.** Service **Settings → Networking → Generate Domain** (gives `…up.railway.app`), or **Custom Domain** to use your own.
+   Add the DNS record Railway shows at your domain registrar. HTTPS is automatic.
+8. **Deploy.** Railway builds and starts. In **Deployments → View logs** you should see
+   `[setup] admin account created` and `catalogue: 12 product(s) added`.
 
-```bash
-DATABASE_URL="<production url>" npx prisma migrate status
-```
+## Emails
 
-**2a. If it lists `0005_guest_bookings` and `0006_calendar_events` as not yet applied, and nothing else:**
+Resend only delivers to everyone once your domain is verified:
+resend.com → Domains → Add domain, then add the DNS records it shows. Until then `onboarding@resend.dev`
+delivers only to the Resend account owner, so clients won't get emails.
 
-```bash
-DATABASE_URL="<production url>" npx prisma migrate deploy
-```
-
-**2b. If it says the database is not managed by Prisma Migrate (no migrations table), or lists 0001–0004 as not applied, even though the site already works:**
-the tables were created another way. Mark the existing migrations as applied first, then deploy the new ones:
-
-```bash
-DATABASE_URL="<production url>" npx prisma migrate resolve --applied 0001_init
-DATABASE_URL="<production url>" npx prisma migrate resolve --applied 0002_testimonials
-DATABASE_URL="<production url>" npx prisma migrate resolve --applied 0003_services
-DATABASE_URL="<production url>" npx prisma migrate resolve --applied 0004_seed_services
-DATABASE_URL="<production url>" npx prisma migrate deploy
-```
-
-**2c. If it reports that a migration "was modified after it was applied" (`0001_init`):** that's the invisible
-BOM character removed from the file. The database itself is fine; continue with `migrate deploy`.
-
-Then load the 12 products (safe to re-run):
-
-```bash
-DATABASE_URL="<production url>" npm run import:catalog
-```
-
-## 3. Admin account
-
-Make sure the production admin does **not** use the default password `prijas@admin123`.
-Sign in at `/login` and change it, or re-seed with a strong `ADMIN_PASSWORD`.
-
-## 4. Deploy
-
-Commit and push. Vercel runs `prisma generate && next build`, which passes locally with no errors.
-Do **not** commit `.env`, `fix-database.command`, `fix-database.log` or `setup-local.sh`.
-
-## 5. After it's live (5 minutes)
+## After it's live (5 minutes)
 
 - [ ] Open the site on your phone; book a test consultation as a guest
 - [ ] Check the client email and the studio alert arrived (spam folder too)
-- [ ] Sign in to `/admin`: the booking is on the dashboard and in the Calendar; confirm it and check the confirmation email arrives
+- [ ] Sign in at `/admin`: the booking is on the dashboard and in the Calendar; confirm it and check the confirmation email
 - [ ] Add a calendar event that blocks a time, and check that time is greyed out on the booking form
-- [ ] Leave a review, approve it in Admin → Reviews, and check it appears under the right filter
+- [ ] Upload a product photo in Admin → Products, redeploy, and check the photo is still there (this confirms the volume)
+- [ ] Leave a review and approve it in Admin → Reviews
 - [ ] Share the link in WhatsApp and check the preview image shows
 - [ ] Delete the test booking, event and review
 
+## Going live on `master`
+
+When the Railway site checks out: merge `redesign` into `master`, switch the Railway branch to `master`,
+and remove the old Vercel project (Vercel → prijasskincare → Settings → Delete) so it stops deploying.
+
 ## Switches
 
-- **Online ordering** is off. Set `ONLINE_ORDERS_ENABLED=true` only if you start selling online again, and set real prices first.
+- **Online ordering** is off. Set `ONLINE_ORDERS_ENABLED=true` only if you start selling online, and set real prices first.
+- **`DB_POOL_MAX`** (default 10) is the number of database connections. Leave it unless Railway support suggests otherwise.

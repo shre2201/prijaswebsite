@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "npx tsx prisma/seed.ts",
-    "import:catalog": "npx tsx prisma/import-catalog.ts"
+    "import:catalog": "npx tsx prisma/import-catalog.ts",
+    "start:prod": "prisma migrate deploy && node scripts/setup.mjs && next start"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -63,5 +64,8 @@
     "tailwindcss": "^3.4.1",
     "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }
